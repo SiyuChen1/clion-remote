@@ -86,7 +86,9 @@ RUN useradd -m user && yes password | passwd user
 # for user, change shell to bash
 RUN usermod -s /bin/bash user
 
+# Inspired by https://www.jetbrains.com/help/clion/remote-projects-support.html#remote-env-vars
 # Modify .bashrc to add commands before the interactivity check
+# Insert source "/opt/ros/noetic/setup.bash" before checking terminal is interactive or not
 RUN sed -i '/case \$- in/i source "/opt/ros/noetic/setup.bash"' /home/user/.bashrc
 
 # Clean up the apt cache to reduce image size

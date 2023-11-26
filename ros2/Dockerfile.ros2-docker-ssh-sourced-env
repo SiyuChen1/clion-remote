@@ -49,6 +49,7 @@ RUN useradd -m user && yes password | passwd user
 
 RUN usermod -s /bin/bash user
 
+# Inspired by https://www.jetbrains.com/help/clion/remote-projects-support.html#remote-env-vars
 # Modify .bashrc to add commands before the interactivity check
 RUN sed -i '/case \$- in/i source "/opt/ros/iron/setup.bash"' /home/user/.bashrc
 
