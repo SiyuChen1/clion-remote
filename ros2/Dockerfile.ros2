@@ -1,0 +1,28 @@
+# Build:
+# docker build -t clion/ros2-env:0.5 -f Dockerfile.ros2 .
+# Test environment:
+# https://github.com/SiyuChen1/ros2_iron_ws.git
+
+# Replace with the distro you want to use
+FROM ros:iron
+
+RUN apt-get update \
+  && apt-get upgrade -y \
+  && apt-get install -y ssh \
+      build-essential \
+      gcc \
+      g++ \
+      gdb \
+      clang \
+      cmake \
+      rsync \
+      tar \
+      wget \
+      ros-iron-example-interfaces \
+  && apt-get clean
+
+# Clean up the apt cache to reduce image size
+RUN rm -rf /var/lib/apt/lists/*
+
+# Set the default command to bash
+CMD ["bash"]

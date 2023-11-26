@@ -1,0 +1,92 @@
+# build: 
+# docker build -t clion/ros-noetic-yaml-docker-ssh-env:0.5 -f Dockerfile.ros-noetic-yaml-docker-ssh-env .
+#
+# run:
+# docker run -td --cap-add sys_ptrace -p127.0.0.1:8888:22 -v /home/siyuchen/c++/catkin_docker_ws:/ros_ws --name clion_ros_noetic_yaml_docker_ssh_env clion/ros-noetic-yaml-docker-ssh-env:0.5
+#
+# stop:
+# docker stop clion_ros_noetic_yaml_docker_ssh_env
+#
+# You might need to clear cached SSH keys. if you’ve ssh’ed into a host with similar settings before:
+# ssh-keygen -f "$HOME/.ssh/known_hosts" -R "[localhost]:8888"
+#
+# test environment:
+# https://github.com/SiyuChen1/catkin_docker_ws.git
+
+# Use ROS Noetic base image
+FROM ros:noetic
+
+LABEL authors="Siyu Chen"
+
+# Install build dependencies for yaml-cpp
+RUN apt-get update && apt-get install -y \
+    git \
+    cmake \
+    gdb \
+    python3-pip \
+    build-essential \
+    libyaml-cpp-dev \
+    openssh-server \
+    ros-noetic-tf2-geometry-msgs \
+    python3-catkin-tools \
+    python3-osrf-pycommon \
+    gdb rsync && apt clean
+    
+# Set the working directory
+WORKDIR /thirdparty
+
+# Clone the yaml-cpp repository
+RUN git clone https://github.com/jbeder/yaml-cpp.git
+
+# Build yaml-cpp from source
+RUN cd yaml-cpp && \
+    mkdir build && \
+    cd build && \
+    cmake .. && \
+    make && \
+    make install
+
+# # Option 1: Using root user, change password, source ros env, ssh service not started 
+# # Set up SSH server
+# RUN mkdir /var/run/sshd
+# # Set a password for the root user in your Dockerfile or entrypoint script:
+# RUN echo 'root:123' | chpasswd
+# RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+
+# ## Optional: Change SSH port (if you don't want to use the default port 22)
+# ## RUN sed -i 's/#Port 22/Port 2222/' /etc/ssh/sshd_config
+# #
+# ## Expose the SSH port
+# #EXPOSE 22
+
+# # Clean up the apt cache to reduce image size
+# RUN rm -rf /var/lib/apt/lists/*
+
+# # Option A:
+# # Add it to .bashrd
+# RUN echo "source /opt/ros/$ROS_DISTRO/setup.bash" >> /root/.bashrc
+# # Set the default command to bash
+# CMD ["bash"]
+
+# # Option B: 
+# #CMD ["/bin/bash", "-c", "source /opt/ros/noetic/setup.bash && exec bash"]
+
+# Option 2: Using normal user, change password, NOT source ros env, ssh service started
+RUN ( \
+    echo 'LogLevel DEBUG2'; \
+    echo 'PermitRootLogin yes'; \
+    echo 'PasswordAuthentication yes'; \
+    echo 'Subsystem sftp /usr/lib/openssh/sftp-server'; \
+  ) > /etc/ssh/sshd_config_test_clion \
+  && mkdir /run/sshd
+
+# Change the password 'password' to something more secure
+RUN useradd -m user && yes password | passwd user
+
+# for user, change shell to bash
+RUN usermod -s /bin/bash user
+
+# Clean up the apt cache to reduce image size
+RUN rm -rf /var/lib/apt/lists/*
+
+CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config_test_clion"]

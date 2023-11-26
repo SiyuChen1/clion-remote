@@ -1,0 +1,63 @@
+# build: 
+# docker build -t clion/ros2-docker-ssh-entrypoint-env:0.5 -f Dockerfile.ros2-docker-ssh-entrypoint-env .
+
+# run:
+# docker run -td --rm --cap-add sys_ptrace -p127.0.0.1:8889:22 -v /home/siyuchen/c++/ros2_iron_ws:/ros2_ws --name clion_ros2_docker_ssh_entrypoint_env clion/ros2-docker-ssh-entrypoint-env:0.5 
+
+# stop:
+# docker stop clion_ros2_docker_ssh_env
+
+# reference
+# see tutorial: https://www.allaban.me/posts/2020/08/ros2-setup-ide-docker/
+
+# Ssh into your Docker container as if it were a remote machine to verify everything is working.
+# ssh user@localhost -p2222
+
+# You might need to clear cached SSH keys. if you’ve ssh’ed into a host with similar settings before:
+# ssh-keygen -f "$HOME/.ssh/known_hosts" -R "[localhost]:2222"
+
+# Refer to this project ros2_iron_ws https://github.com/SiyuChen1/ros2_iron_ws.git
+# for testing whether it works
+
+# Replace with the distro you want to use
+FROM ros:iron
+
+RUN apt-get update \
+  && apt-get upgrade -y \
+  && apt-get install -y ssh \
+      build-essential \
+      gcc \
+      g++ \
+      gdb \
+      clang \
+      cmake \
+      rsync \
+      tar \
+      wget \
+      ros-iron-example-interfaces \
+  && apt-get clean
+
+# Clean up the apt cache to reduce image size
+RUN rm -rf /var/lib/apt/lists/*
+
+RUN ( \
+    echo 'LogLevel DEBUG2'; \
+    echo 'PermitRootLogin yes'; \
+    echo 'PasswordAuthentication yes'; \
+    echo 'Subsystem sftp /usr/lib/openssh/sftp-server'; \
+  ) > /etc/ssh/sshd_config_test_clion \
+  && mkdir /run/sshd
+
+# Change the password 'password' to something more secure
+RUN useradd -m user && yes password | passwd user
+
+RUN usermod -s /bin/bash user
+
+# setup entrypoint
+COPY ./ros_entrypoint.sh /
+
+RUN chmod +x /ros_entrypoint.sh
+
+ENTRYPOINT ["/ros_entrypoint.sh"]
+
+CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config_test_clion"]
